@@ -34,7 +34,7 @@ const INITIAL_LINE = {
   partNumber: "",
   revision: "",
   revisionDefaultInSystem: "UNKNOWN",
-  pnRevVerification: "NO",
+  pnRevVerification: "",
   newSerialNumber: "",
   referenceSerialNumber: "",
   lineStatus: "ACTIVE",
@@ -106,8 +106,24 @@ function normalizeRevDefault(value, fallback = "UNKNOWN") {
   return fallback;
 }
 
-function normalizePnRev(value, fallback = "NO") {
-  return normalizeYesNoNa(value, fallback);
+function normalizePnRev(value, fallback = "") {
+  const normalized = String(value ?? "").toUpperCase();
+
+  if (normalized === "CORRECT" || normalized === "YES") {
+    return "CORRECT";
+  }
+  if (normalized === "REVISED" || normalized === "NO" || normalized === "INCORRECT") {
+    return "REVISED";
+  }
+  if (normalized === "NA" || normalized === "PENDING") {
+    return "";
+  }
+
+  return fallback;
+}
+
+function isPnRevValid(value) {
+  return value === "CORRECT" || value === "REVISED";
 }
 
 function canEditPMFields(stage) {
@@ -118,12 +134,20 @@ function canEditEngineeringFields(stage) {
   return stage === "ENGINEERING_REVIEW";
 }
 
+function canEditHMR(stage) {
+  return stage === "ENGINEERING_REVIEW" || stage === "RELEASED_TO_PRODUCTION";
+}
+
 function canEditPartNumberAndRevision(stage) {
   return stage === "DRAFT" || stage === "ENGINEERING_REVIEW";
 }
 
 function canEditCommonFields(stage) {
   return stage === "DRAFT";
+}
+
+function canUpdateOrder(stage) {
+  return stage === "ENGINEERING_REVIEW" || stage === "RELEASED_TO_PRODUCTION";
 }
 
 function isPMStage(stage) {
@@ -285,11 +309,11 @@ function mergeOrderTrackingFromLines(loadedOrder, loadedLines) {
 }
 
 function toPnRevPayloadValue(value) {
-  const normalized = normalizePnRev(value, "NO");
-  if (normalized === "YES") {
+  const normalized = normalizePnRev(value, "");
+  if (normalized === "CORRECT") {
     return "CORRECT";
   }
-  if (normalized === "NO") {
+  if (normalized === "REVISED") {
     return "INCORRECT";
   }
   return "PENDING";
@@ -451,7 +475,7 @@ function getEngineeringMissingFields() {
         missing.push({ line: index, field: "revDefault" });
       }
 
-      if (line.pnRevVerification !== "YES") {
+      if (!isPnRevValid(line.pnRevVerification)) {
         missing.push({ line: index, field: "pnVerify" });
       }
     });
@@ -503,7 +527,7 @@ return missingFields.some(
         Number(line.quantity) > 0 &&
         line.revision?.trim() !== "" &&
         line.revisionDefaultInSystem === "YES" &&
-        line.pnRevVerification === "YES",
+        isPnRevValid(line.pnRevVerification),
     );
   }
 
@@ -736,7 +760,7 @@ useEffect(() => {
         nextOrder = { ...prev, currentStage: "PROBLEM", owner: "PM", lastUpdated: nowIso };
       }
       if (action === "RELEASE_PRODUCTION") {
-        nextOrder = { ...prev, currentStage: "RELEASED_TO_PRODUCTION", owner: "PM", lastUpdated: nowIso };
+        nextOrder = { ...prev, currentStage: "RELEASED_TO_PRODUCTION", owner: "Production", lastUpdated: nowIso };
       }
       if (action === "SEND_BACK_ENGINEERING") {
         nextOrder = { ...prev, currentStage: "ENGINEERING_REVIEW", owner: "Engineering", lastUpdated: nowIso };
@@ -1219,9 +1243,9 @@ console.log("Current Stage:", currentStage);
                     onChange={(event) => updateLineItem(index, "pnRevVerification", event.target.value)}
                     disabled={!canEditEngineeringFields(currentStage)}
                   >
-                    <option value="YES">Yes</option>
-                    <option value="NO">No</option>
-                    <option value="NA">NA</option>
+                    <option value="">Select status</option>
+                    <option value="CORRECT">Correct</option>
+                    <option value="REVISED">Revised</option>
                   </select>
                 </label>
               </div>
@@ -1275,7 +1299,7 @@ console.log("Current Stage:", currentStage);
                 <select
                   value={order.hmrStatus}
                   onChange={(event) => setOrder((prev) => ({ ...prev, hmrStatus: event.target.value }))}
-                  disabled={!canEditEngineeringFields(currentStage)}
+                  disabled={!canEditHMR(currentStage)}
                 >
                   <option value="YES">Yes</option>
                   <option value="NO">No</option>
@@ -1298,7 +1322,6 @@ console.log("Current Stage:", currentStage);
                 );
                 setOrder((prev) => ({ ...prev, notes: value }));
               }}
-              disabled={!canEditCommonFields(currentStage)}
               rows="3"
             />
           </label>
@@ -1321,16 +1344,16 @@ console.log("Current Stage:", currentStage);
           ) : (
             <button
               className="primary-button"
-              disabled={submitting || !canEditCommonFields(currentStage)}
+              disabled={submitting || !canUpdateOrder(currentStage)}
               style={{
-                opacity: canEditCommonFields(currentStage) ? 1 : 0.5,
-                cursor: canEditCommonFields(currentStage)
+                opacity: canUpdateOrder(currentStage) ? 1 : 0.5,
+                cursor: canUpdateOrder(currentStage)
                   ? submitting
                     ? "wait"
                     : "pointer"
                   : "not-allowed",
               }}
-              title={!canEditCommonFields(currentStage) ? "Order is read-only in this stage" : ""}
+              title={!canUpdateOrder(currentStage) ? "Order is read-only in this stage" : ""}
               type="submit"
             >
               {submitting ? "Updating..." : "Update Order"}
