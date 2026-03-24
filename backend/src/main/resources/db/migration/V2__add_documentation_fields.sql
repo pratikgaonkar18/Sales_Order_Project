@@ -1,0 +1,5 @@
+ALTER TABLE order_lines
+    ADD COLUMN drawing_status VARCHAR(10) NOT NULL DEFAULT 'NA',
+    ADD COLUMN test_sheet_status VARCHAR(10) NOT NULL DEFAULT 'NA',
+    ADD COLUMN tag_status VARCHAR(10) NOT NULL DEFAULT 'NA',
+    ADD COLUMN hmr_status VARCHAR(10) NOT NULL DEFAULT 'NA';

@@ -1,0 +1,13 @@
+package com.turbocorp.orderworkflow.orders.domain;
+
+public enum WorkflowStage {
+    DRAFT,
+    SUBMITTED_TO_ENGINEERING,
+    ENGINEERING_REVIEW_IN_PROGRESS,
+    CLARIFICATION_NEEDED,
+    ENGINEERING_APPROVED,
+    READY_FOR_PRODUCTION_RELEASE,
+    RELEASED_TO_PRODUCTION,
+    CLOSED,
+    CANCELLED
+}
