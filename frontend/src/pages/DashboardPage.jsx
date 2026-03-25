@@ -322,7 +322,7 @@ export default function DashboardPage() {
       </section>
 
       <div className="table-wrap">
-        <table>
+        <table className="dashboard-table">
           <thead>
             <tr>
               <th>Order</th>
@@ -364,7 +364,7 @@ export default function DashboardPage() {
                     <span className={orderStatusClass(computedOrderStatus)}>{computedOrderStatus}</span>
                   </td>
                   <td>
-                    <button className="ghost-button" type="button" onClick={() => openOrder(order)}>
+                    <button className="action-button" type="button" onClick={() => openOrder(order)}>
                       Open
                     </button>
                   </td>

@@ -164,7 +164,37 @@ h1 {
   color: var(--ink-2);
 }
 
-.search-grid,
+.ghost-button:hover {
+  background: #f0f7f5;
+  border-color: #a0bbb7;
+}
+
+.action-button {
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #61b39f;
+  border-radius: 10px;
+  color: #61b39f;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+.action-button:hover {
+  background: #e9f3f1;
+  border-color: #4fa395;
+  color: #1e3735;
+}
+
+.search-grid {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+}
+
 .form-grid {
   margin-top: 18px;
   display: grid;
@@ -172,10 +202,16 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.search-grid label {
+  flex: 0 1 auto;
+  min-width: 160px;
+}
+
 .search-actions {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 label {
@@ -366,6 +402,35 @@ tbody td {
   color: #264240;
 }
 
+.dashboard-table th,
+.dashboard-table td {
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.dashboard-table th:nth-child(6),
+.dashboard-table td:nth-child(6) {
+  text-align: center;
+}
+
+.dashboard-table thead th {
+  background: #f1f5f9;
+  font-weight: 700;
+  border-bottom: 1px solid #dbe3ea;
+}
+
+.dashboard-table thead .status-divider {
+  background: #f1f5f9;
+}
+
+.dashboard-table tbody tr {
+  min-height: 48px;
+}
+
+.dashboard-table tbody tr:hover {
+  background: #f8fafc;
+}
+
 .status-divider {
   border-left: 2px solid #c8dbd7;
   background: #f7fbfa;
@@ -457,7 +522,15 @@ tbody td {
 }
 
 @media (max-width: 1080px) {
-  .search-grid,
+  .search-grid {
+    gap: 12px;
+  }
+
+  .search-grid label {
+    min-width: 140px;
+    flex: 0 1 calc(50% - 7px);
+  }
+
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -494,7 +567,15 @@ tbody td {
     flex: 1;
   }
 
-  .search-grid,
+  .search-grid {
+    gap: 10px;
+  }
+
+  .search-grid label {
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -512,7 +593,13 @@ tbody td {
   }
 
   .search-actions {
+    width: 100%;
     align-items: stretch;
-    flex-direction: column;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .search-actions button {
+    flex: 1;
   }
 }

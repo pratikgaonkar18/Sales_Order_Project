@@ -11,10 +11,9 @@ function App() {
   return (
     <div className="app-shell">
       <header className="top-hero">
-        <p className="eyebrow">Internal Workflow Tool</p>
-        <h1>Sales Order Engineering Control Room</h1>
+        <h1>Sales Order Workflow System</h1>
         <p className="subtitle">
-          Replace spreadsheet handoffs with live status, searchable history, and accountable ownership.
+          Track and manage order progress across teams
         </p>
         <div className="tab-row">
           <button
