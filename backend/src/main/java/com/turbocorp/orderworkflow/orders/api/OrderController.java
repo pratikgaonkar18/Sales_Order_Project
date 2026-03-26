@@ -8,7 +8,6 @@ import com.turbocorp.orderworkflow.orders.api.dto.search.OrderSearchResponse;
 import com.turbocorp.orderworkflow.orders.service.OrderService;
 import jakarta.validation.Valid;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,10 +20,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/orders")
-@RequiredArgsConstructor
 public class OrderController {
 
     private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+    this.orderService = orderService;
+}
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

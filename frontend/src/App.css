@@ -170,21 +170,24 @@ h1 {
 }
 
 .action-button {
-  padding: 8px 12px;
-  background: #ffffff;
-  border: 1px solid #61b39f;
-  border-radius: 10px;
-  color: #61b39f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: #f8fffd;
+  border: 1px solid #57a894;
+  border-radius: 999px;
+  color: #1f6a57;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
 .action-button:hover {
-  background: #e9f3f1;
-  border-color: #4fa395;
-  color: #1e3735;
+  background: #ebf7f3;
+  border-color: #3f9b85;
+  color: #155646;
 }
 
 .search-grid {
@@ -413,6 +416,12 @@ tbody td {
   text-align: center;
 }
 
+.dashboard-table th:nth-child(10),
+.dashboard-table td:nth-child(10) {
+  text-align: center;
+  white-space: nowrap;
+}
+
 .dashboard-table thead th {
   background: #f1f5f9;
   font-weight: 700;
@@ -438,25 +447,26 @@ tbody td {
 
 .order-status-pill {
   display: inline-flex;
+  align-items: center;
   border-radius: 999px;
-  padding: 4px 9px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 500;
 }
 
 .order-status-open {
-  background: #fff4cc;
-  color: #7b5b00;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .order-status-pending-hmr {
-  background: #ffe8d6;
+  background: #ffedd5;
   color: #9a3412;
 }
 
 .order-status-closed {
-  background: #ddf2e5;
-  color: #195f3d;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .muted-cell {
@@ -469,14 +479,14 @@ tbody td {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 5px 10px;
-  font-weight: 600;
-  font-size: 0.8rem;
+  padding: 4px 10px;
+  font-weight: 500;
+  font-size: 0.76rem;
 }
 
 .stage-draft {
-  background: #fff3ca;
-  color: #7a5a00;
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .stage-engineering-review {
@@ -485,13 +495,13 @@ tbody td {
 }
 
 .stage-engineering-approved {
-  background: #e0f2fe;
-  color: #075985;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .stage-released-to-production {
-  background: #d8f0e2;
-  color: #1d6543;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .stage-active {
@@ -500,8 +510,8 @@ tbody td {
 }
 
 .stage-problem {
-  background: #ffe2db;
-  color: #8b2f1b;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .ok-text,

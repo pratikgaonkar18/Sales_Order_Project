@@ -3,6 +3,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { createOrder, fetchOrderById, toStageLabel } from "../api/ordersApi";
 import WorkflowHeader from "../components/WorkflowHeader";
 import { normalizeStage } from "../utils/stageUtils";
+import { useNavigate } from "react-router-dom";
 
 const MOCK_ORDERS_KEY = "order-workflow-mock-orders";
 
@@ -389,6 +390,7 @@ export default function OrderFormPage() {
   const [error, setError] = useState("");
   const [showErrors, setShowErrors] = useState(false);
   const [wasPMReady, setWasPMReady] = useState(false);
+  const navigate = useNavigate();
   
 
   const isAmOrder = useMemo(() => order.division === "AM", [order.division]);
@@ -654,6 +656,10 @@ return missingFields.some(
 }, [order, lineItems]);
 
 useEffect(() => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}, [orderId]);
+
+useEffect(() => {
   if (wasPMReady && !isPMReady()) {
     setShowErrors(true);
   }
@@ -879,6 +885,7 @@ useEffect(() => {
       };
 
       const created = await createOrder(payload);
+      navigate(`/order/${created.id}`);
 
       const snapshot = buildOrderSnapshot({
         id: created.id,
@@ -895,7 +902,6 @@ useEffect(() => {
       setMessage(
         `Order ${created.salesOrderNo} created with id ${created.id}. Current stage: ${toStageLabel(created.status)}.`,
       );
-      setOrder(INITIAL_ORDER);
       setLineItems([INITIAL_LINE]);
       setMode("create");
     } catch (err) {
