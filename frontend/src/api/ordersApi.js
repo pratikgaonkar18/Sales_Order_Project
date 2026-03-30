@@ -67,8 +67,8 @@ async function request(path, options = {}) {
   return response.json();
 }
 
-export async function fetchDashboard(openOnly = true) {
-  return request("/api/orders/dashboard", { method: "GET", query: { openOnly } });
+export async function fetchDashboard(openOnly = true, page = 0, size = 25) {
+  return request("/api/orders/dashboard", { method: "GET", query: { openOnly, page, size } });
 }
 
 export async function searchOrders(filters) {

@@ -39,11 +39,11 @@ function hydrateOrdersWithLatestData(baseOrders) {
 
     const mergedStage = normalizeStage(
       snapshotOrder?.currentStage ||
-        snapshotOrder?.stage ||
-        snapshotOrder?.status ||
-        order.currentStage ||
-        order.stage ||
-        order.status,
+      snapshotOrder?.stage ||
+      order.currentStage ||
+      order.stage ||
+      order.status ||
+      snapshotOrder?.status
     );
 
     const mergedOwner =
@@ -68,10 +68,16 @@ function hydrateOrdersWithLatestData(baseOrders) {
       ...order,
       currentStage: mergedStage,
       stage: mergedStage,
-      status: mergedStage,
       owner: mergedOwner,
       currentOwnerRole: mergedOwner,
-      stageUpdatedAt: snapshotOrder?.lastUpdated || snapshot?.updatedAt || order.stageUpdatedAt,
+      stageUpdatedAt:
+        snapshotOrder?.stageUpdatedAt ||
+        snapshotOrder?.lastUpdated ||
+        snapshotOrder?.updatedAt ||
+        snapshot?.updatedAt ||
+        order.stageUpdatedAt ||
+        order.lastUpdated ||
+        order.updatedAt,
       engineeringTracking: {
         ...(order.engineeringTracking || {}),
         hmr: mergedHmr,
@@ -133,6 +139,9 @@ function getOrderStatus(order) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [ownerFilter, setOwnerFilter] = useState("ALL");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -164,18 +173,19 @@ export default function DashboardPage() {
     [orders, statusFilter, ownerFilter],
   );
 
-  async function loadDashboard() {
+  async function loadDashboard(page = currentPage) {
     setLoading(true);
     setError("");
     try {
-      const data = await fetchDashboard(true);
-      const latestOrders = hydrateOrdersWithLatestData(data);
-      setOrders((prev) =>
-        latestOrders.map((updatedOrder) => {
-          const existingOrder = prev.find((o) => o.id === updatedOrder.id);
-          return existingOrder ? { ...existingOrder, ...updatedOrder } : updatedOrder;
-        }),
-      );
+      const data = await fetchDashboard(true, page, 25);
+      const loadedOrders = Array.isArray(data)
+        ? data
+        : (data?.content || []);
+      const latestOrders = hydrateOrdersWithLatestData(loadedOrders);
+      setOrders(latestOrders);
+      setCurrentPage(Number.isInteger(data?.currentPage) ? data.currentPage : page);
+      setTotalPages(Math.max(Number(data?.totalPages) || 1, 1));
+      setTotalElements(Number(data?.totalElements) || latestOrders.length);
     } catch (err) {
       setError(err.message || "Failed to load dashboard.");
     } finally {
@@ -190,12 +200,11 @@ export default function DashboardPage() {
     try {
       const data = await searchOrders(filters);
       const latestOrders = hydrateOrdersWithLatestData(data);
-      setOrders((prev) =>
-        latestOrders.map((updatedOrder) => {
-          const existingOrder = prev.find((o) => o.id === updatedOrder.id);
-          return existingOrder ? { ...existingOrder, ...updatedOrder } : updatedOrder;
-        }),
-      );
+
+      setOrders(latestOrders);
+      setCurrentPage(0);
+      setTotalPages(1);
+      setTotalElements(latestOrders.length);
     } catch (err) {
       setError(err.message || "Search failed.");
     } finally {
@@ -212,12 +221,6 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboard();
   }, []);
-
-  useEffect(() => {
-    orders.forEach((order) => {
-      console.log(order.currentStage);
-    });
-  }, [orders]);
 
   function openOrder(order) {
     if (!order?.id) {
@@ -354,7 +357,7 @@ export default function DashboardPage() {
                   <td>{order.customerName}</td>
                   <td>{order.division || "-"}</td>
                   <td>
-                    <StagePill stage={order.stage || order.status || order.currentStage} />
+                    <StagePill stage={order.currentStage || order.stage || order.status} />
                   </td>
                   <td>{toStageLabel(order.owner || order.currentOwnerRole || "") || "-"}</td>
                   <td>{order.daysWaiting ?? "-"}</td>
@@ -373,6 +376,29 @@ export default function DashboardPage() {
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="search-actions" style={{ marginTop: "12px", justifyContent: "space-between", width: "100%" }}>
+        <button
+          className="ghost-button"
+          type="button"
+          onClick={() => loadDashboard(currentPage - 1)}
+          disabled={currentPage === 0}
+        >
+          Previous
+        </button>
+        <div style={{ alignSelf: "center", textAlign: "center", color: "#355352", fontSize: "0.9rem" }}>
+          <div>Page {currentPage + 1} of {totalPages}</div>
+          <div>Showing {orders.length} of {totalElements}</div>
+        </div>
+        <button
+          className="ghost-button"
+          type="button"
+          onClick={() => loadDashboard(currentPage + 1)}
+          disabled={currentPage >= totalPages - 1}
+        >
+          Next
+        </button>
       </div>
     </section>
   );

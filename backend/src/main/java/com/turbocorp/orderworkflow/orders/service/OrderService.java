@@ -158,16 +158,16 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public Page<DashboardOrderResponse> getDashboard(boolean openOnly, Pageable pageable) {
-        return salesOrderRepository.findDashboardOrders(openOnly, pageable)
-                .map(order -> new DashboardOrderResponse(
-                        order.getId(),
-                        order.getSalesOrderNo(),
-                        order.getCustomerName(),
-                        order.getStatus(),
-                        order.getCurrentOwnerRole(),
-                    calculateDaysWaiting(order.getStageUpdatedAt()),
-                    evaluateOrderStatus(order)
-                ));
+       return salesOrderRepository.findDashboardOrders(openOnly, pageable)
+    .map(order -> new DashboardOrderResponse(
+        order.getId(),
+        order.getSalesOrderNo(),
+        order.getCustomerName(),
+        order.getStatus(),
+        order.getCurrentOwnerRole(),
+        calculateDaysWaiting(order.getStageUpdatedAt()),
+        evaluateOrderStatus(order)
+    ));
     }
 
     @Transactional(readOnly = true)

@@ -15,29 +15,15 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
 
     boolean existsBySalesOrderNo(String salesOrderNo);
 
-    @Query(
-            value = """
-                select o.*
-                from sales_orders o
-                where (:openOnly = false or o.status not in ('CLOSED', 'CANCELLED'))
-                order by
-                    case
-                        when status in ('CLOSED', 'CANCELLED') then 1
-                        else 0
-                    end asc,
-                    stage_updated_at desc,
-                    timestampdiff(day, stage_updated_at, now()) desc,
-                    id desc
-                -- #pageable
-                """,
-            countQuery = """
-                select count(*)
-                from sales_orders o
-                where (:openOnly = false or o.status not in ('CLOSED', 'CANCELLED'))
-                """,
-            nativeQuery = true
-    )
-    Page<SalesOrder> findDashboardOrders(@Param("openOnly") boolean openOnly, Pageable pageable);
+    @Query("""
+        select o
+        from SalesOrder o
+        order by o.stageUpdatedAt desc, o.id desc
+    """)
+    Page<SalesOrder> findDashboardOrders(
+        @Param("openOnly") boolean openOnly,
+        Pageable pageable
+    );
 
         @Query("""
             select distinct o
