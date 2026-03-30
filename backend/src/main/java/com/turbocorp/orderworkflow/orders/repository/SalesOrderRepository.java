@@ -3,6 +3,8 @@ package com.turbocorp.orderworkflow.orders.repository;
 import com.turbocorp.orderworkflow.orders.domain.SalesOrder;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +15,29 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
 
     boolean existsBySalesOrderNo(String salesOrderNo);
 
-    List<SalesOrder> findAllByOrderByStageUpdatedAtAsc();
+    @Query(
+            value = """
+                select o.*
+                from sales_orders o
+                where (:openOnly = false or o.status not in ('CLOSED', 'CANCELLED'))
+                order by
+                    case
+                        when status in ('CLOSED', 'CANCELLED') then 1
+                        else 0
+                    end asc,
+                    stage_updated_at desc,
+                    timestampdiff(day, stage_updated_at, now()) desc,
+                    id desc
+                -- #pageable
+                """,
+            countQuery = """
+                select count(*)
+                from sales_orders o
+                where (:openOnly = false or o.status not in ('CLOSED', 'CANCELLED'))
+                """,
+            nativeQuery = true
+    )
+    Page<SalesOrder> findDashboardOrders(@Param("openOnly") boolean openOnly, Pageable pageable);
 
         @Query("""
             select distinct o

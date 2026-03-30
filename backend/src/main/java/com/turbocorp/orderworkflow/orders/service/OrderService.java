@@ -29,6 +29,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -155,9 +157,8 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardOrderResponse> getDashboard(boolean openOnly) {
-        return salesOrderRepository.findAllByOrderByStageUpdatedAtAsc().stream()
-                .filter(order -> !openOnly || isOpenStatus(order.getStatus()))
+    public Page<DashboardOrderResponse> getDashboard(boolean openOnly, Pageable pageable) {
+        return salesOrderRepository.findDashboardOrders(openOnly, pageable)
                 .map(order -> new DashboardOrderResponse(
                         order.getId(),
                         order.getSalesOrderNo(),
@@ -166,8 +167,7 @@ public class OrderService {
                         order.getCurrentOwnerRole(),
                     calculateDaysWaiting(order.getStageUpdatedAt()),
                     evaluateOrderStatus(order)
-                ))
-                .toList();
+                ));
     }
 
     @Transactional(readOnly = true)
@@ -213,10 +213,6 @@ public class OrderService {
         }
         long days = ChronoUnit.DAYS.between(stageUpdatedAt.toLocalDate(), LocalDate.now());
         return Math.max(days, 0);
-    }
-
-    private boolean isOpenStatus(WorkflowStage status) {
-        return status != WorkflowStage.CLOSED && status != WorkflowStage.CANCELLED;
     }
 
     private void validateReferenceSerial(DivisionType division, String referenceSerialNumber) {
