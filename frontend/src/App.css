@@ -440,6 +440,25 @@ tbody td {
   background: #f8fafc;
 }
 
+.dashboard-row-archived {
+  background: #f3f5f7;
+}
+
+.dashboard-row-archived td {
+  color: #6a7a7b;
+}
+
+.dashboard-row-archived .stage-pill,
+.dashboard-row-archived .order-status-pill {
+  opacity: 0.75;
+}
+
+.dashboard-action-cell {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .status-divider {
   border-left: 2px solid #c8dbd7;
   background: #f7fbfa;

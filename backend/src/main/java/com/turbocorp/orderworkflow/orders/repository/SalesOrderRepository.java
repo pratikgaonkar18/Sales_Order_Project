@@ -18,10 +18,12 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     @Query("""
         select o
         from SalesOrder o
+        where (:includeArchived = true or o.isDeleted = false)
         order by o.stageUpdatedAt desc, o.id desc
     """)
     Page<SalesOrder> findDashboardOrders(
         @Param("openOnly") boolean openOnly,
+        @Param("includeArchived") boolean includeArchived,
         Pageable pageable
     );
 
@@ -29,13 +31,15 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
             select distinct o
             from SalesOrder o
             left join o.lines l
-            where (:customerName is null or lower(o.customerName) like lower(concat('%', :customerName, '%')))
+                        where (:includeArchived = true or o.isDeleted = false)
+                            and (:customerName is null or lower(o.customerName) like lower(concat('%', :customerName, '%')))
               and (:partNumber is null or lower(l.partNumber) like lower(concat('%', :partNumber, '%')))
               and (:salesOrderNo is null or lower(o.salesOrderNo) like lower(concat('%', :salesOrderNo, '%')))
-              and (:referenceSerial is null or lower(o.referenceSerialNumber) like lower(concat('%', :referenceSerial, '%')))
+              and (:referenceSerial is null or lower(l.referenceSerialNumber) like lower(concat('%', :referenceSerial, '%')))
             order by o.stageUpdatedAt desc
             """)
         List<SalesOrder> searchOrders(
+                        @Param("includeArchived") boolean includeArchived,
             @Param("customerName") String customerName,
             @Param("partNumber") String partNumber,
             @Param("salesOrderNo") String salesOrderNo,

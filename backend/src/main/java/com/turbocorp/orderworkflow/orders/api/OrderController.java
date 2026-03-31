@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,17 +46,33 @@ public class OrderController {
     @GetMapping
     public PaginatedDashboardResponse listOrders(
             @RequestParam(defaultValue = "false") boolean openOnly,
+            @RequestParam(defaultValue = "false") boolean includeArchived,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "25") @Min(1) @Max(100) int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<DashboardOrderResponse> dashboardPage = orderService.getDashboard(openOnly, pageable);
+        Page<DashboardOrderResponse> dashboardPage = orderService.getDashboard(openOnly, includeArchived, pageable);
         return toPaginatedDashboardResponse(dashboardPage);
     }
 
     @GetMapping("/{orderId:\\d+}")
     public OrderSummaryResponse getById(@PathVariable Long orderId) {
         return orderService.getOrderById(orderId);
+    }
+
+    @DeleteMapping({"/{orderId}", "/{orderId:\\d+}"})
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOrder(
+            @PathVariable Long orderId,
+            @RequestParam(defaultValue = "SYSTEM") String deletedBy
+    ) {
+        orderService.softDelete(orderId, deletedBy);
+    }
+
+    @PostMapping("/{orderId:\\d+}/restore")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restoreOrder(@PathVariable Long orderId) {
+        orderService.restore(orderId);
     }
 
     @PostMapping("/{orderId:\\d+}/stage")
@@ -69,11 +86,12 @@ public class OrderController {
     @GetMapping("/dashboard")
     public PaginatedDashboardResponse getDashboard(
             @RequestParam(defaultValue = "true") boolean openOnly,
+            @RequestParam(defaultValue = "false") boolean includeArchived,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "25") @Min(1) @Max(100) int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<DashboardOrderResponse> dashboardPage = orderService.getDashboard(openOnly, pageable);
+        Page<DashboardOrderResponse> dashboardPage = orderService.getDashboard(openOnly, includeArchived, pageable);
         return toPaginatedDashboardResponse(dashboardPage);
     }
 
@@ -92,9 +110,10 @@ public class OrderController {
             @RequestParam(required = false) String customerName,
             @RequestParam(required = false) String partNumber,
             @RequestParam(required = false) String salesOrderNo,
-            @RequestParam(required = false) String referenceSerial
+            @RequestParam(required = false) String referenceSerial,
+            @RequestParam(defaultValue = "false") boolean includeArchived
     ) {
-        return orderService.searchOrders(customerName, partNumber, salesOrderNo, referenceSerial);
+        return orderService.searchOrders(includeArchived, customerName, partNumber, salesOrderNo, referenceSerial);
     }
 
     @GetMapping("/search/customer")

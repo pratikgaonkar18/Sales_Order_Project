@@ -11,6 +11,7 @@ public record DashboardOrderResponse(
         WorkflowStage stage,
         OwnerRole owner,
         long daysWaiting,
-        ProductionOrderStatus orderStatus
+        ProductionOrderStatus orderStatus,
+        boolean isDeleted
 ) {
 }

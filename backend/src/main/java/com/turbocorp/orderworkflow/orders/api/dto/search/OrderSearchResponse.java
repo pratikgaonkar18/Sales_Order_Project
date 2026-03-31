@@ -15,6 +15,7 @@ public record OrderSearchResponse(
         OwnerRole currentOwnerRole,
         ProductionOrderStatus orderStatus,
         String referenceSerialNumber,
-        LocalDateTime stageUpdatedAt
+        LocalDateTime stageUpdatedAt,
+        boolean isDeleted
 ) {
 }

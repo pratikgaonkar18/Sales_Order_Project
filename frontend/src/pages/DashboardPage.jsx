@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchDashboard, searchOrders, toStageLabel } from "../api/ordersApi";
+import { archiveOrder, fetchDashboard, restoreOrder, searchOrders, toStageLabel } from "../api/ordersApi";
 import StagePill from "../components/StagePill";
 import { normalizeStage } from "../utils/stageUtils";
 
@@ -12,6 +12,42 @@ const EMPTY_FILTERS = {
 };
 
 const MOCK_ORDERS_KEY = "order-workflow-mock-orders";
+
+function toNonEmptyString(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  const text = String(value).trim();
+  return text;
+}
+
+function firstNonEmptyReferenceSerial(items) {
+  if (!Array.isArray(items)) {
+    return "";
+  }
+
+  for (const item of items) {
+    const serial = toNonEmptyString(item?.referenceSerialNumber || item?.referenceSerial);
+    if (serial) {
+      return serial;
+    }
+  }
+
+  return "";
+}
+
+function resolveReferenceSerial(orderLike) {
+  const orderLevelReference = toNonEmptyString(orderLike?.referenceSerialNumber || orderLike?.referenceSerial);
+  if (orderLevelReference) {
+    return orderLevelReference;
+  }
+
+  return (
+    firstNonEmptyReferenceSerial(orderLike?.lineItems) ||
+    firstNonEmptyReferenceSerial(orderLike?.lines) ||
+    ""
+  );
+}
 
 function readMockOrders() {
   try {
@@ -36,6 +72,12 @@ function hydrateOrdersWithLatestData(baseOrders) {
     const snapshotOrder = snapshot?.order || snapshot?.fullOrder || snapshot;
     const snapshotLine = snapshot?.line || snapshot?.fullOrder || snapshot;
     const snapshotFirstLine = Array.isArray(snapshot?.lineItems) ? snapshot.lineItems[0] : undefined;
+    const snapshotLineItems =
+      snapshotOrder?.lineItems ||
+      snapshotOrder?.lines ||
+      snapshot?.lineItems ||
+      snapshot?.lines ||
+      [];
 
     const mergedStage = normalizeStage(
       snapshotOrder?.currentStage ||
@@ -64,6 +106,13 @@ function hydrateOrdersWithLatestData(baseOrders) {
       order.hmr ||
       order.hmrStatus;
 
+    const mergedReferenceSerial =
+      resolveReferenceSerial(order) ||
+      resolveReferenceSerial(snapshotOrder) ||
+      resolveReferenceSerial({ lineItems: snapshotLineItems }) ||
+      resolveReferenceSerial(snapshotLine) ||
+      resolveReferenceSerial(snapshotFirstLine);
+
     return {
       ...order,
       currentStage: mergedStage,
@@ -82,6 +131,7 @@ function hydrateOrdersWithLatestData(baseOrders) {
         ...(order.engineeringTracking || {}),
         hmr: mergedHmr,
       },
+      referenceSerialNumber: mergedReferenceSerial || order.referenceSerialNumber,
       hmr: mergedHmr,
       hmrStatus: mergedHmr,
     };
@@ -144,6 +194,7 @@ export default function DashboardPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [ownerFilter, setOwnerFilter] = useState("ALL");
+  const [showArchived, setShowArchived] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -177,7 +228,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await fetchDashboard(true, page, 25);
+      const data = await fetchDashboard(true, page, 25, showArchived);
       const loadedOrders = Array.isArray(data)
         ? data
         : (data?.content || []);
@@ -198,7 +249,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await searchOrders(filters);
+      const data = await searchOrders(filters, showArchived);
       const latestOrders = hydrateOrdersWithLatestData(data);
 
       setOrders(latestOrders);
@@ -212,6 +263,72 @@ export default function DashboardPage() {
     }
   }
 
+  async function runSearchWithoutEvent() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await searchOrders(filters, showArchived);
+      const latestOrders = hydrateOrdersWithLatestData(data);
+
+      setOrders(latestOrders);
+      setCurrentPage(0);
+      setTotalPages(1);
+      setTotalElements(latestOrders.length);
+    } catch (err) {
+      setError(err.message || "Search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function reloadOrdersAfterArchive() {
+    if (hasSearchFilters) {
+      await runSearchWithoutEvent();
+      return;
+    }
+
+    await loadDashboard(currentPage);
+  }
+
+  async function handleArchive(order) {
+    if (!order?.id) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to archive this order? This can be restored later.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await archiveOrder(order.id);
+      await reloadOrdersAfterArchive();
+    } catch (err) {
+      setError(err.message || "Failed to archive order.");
+      setLoading(false);
+    }
+  }
+
+  async function handleRestore(order) {
+    if (!order?.id) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await restoreOrder(order.id);
+      await reloadOrdersAfterArchive();
+    } catch (err) {
+      setError(err.message || "Failed to restore order.");
+      setLoading(false);
+    }
+  }
+
   function resetFilters() {
     setFilters(EMPTY_FILTERS);
     setOwnerFilter("ALL");
@@ -219,8 +336,12 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    if (hasSearchFilters) {
+      runSearchWithoutEvent();
+      return;
+    }
+    loadDashboard(0);
+  }, [showArchived]);
 
   function openOrder(order) {
     if (!order?.id) {
@@ -236,7 +357,7 @@ export default function DashboardPage() {
           <h2>Workflow Dashboard</h2>
           <p>Track stage, ownership, and waiting time across active orders.</p>
         </div>
-        <button className="ghost-button" type="button" onClick={loadDashboard}>
+        <button className="ghost-button" type="button" onClick={() => loadDashboard(currentPage)}>
           Refresh
         </button>
       </div>
@@ -281,6 +402,14 @@ export default function DashboardPage() {
             <option value="PM">PM</option>
             <option value="ENGINEERING">Engineering</option>
           </select>
+        </label>
+        <label>
+          Show Archived
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(event) => setShowArchived(event.target.checked)}
+          />
         </label>
         <div className="search-actions">
           <button className="primary-button" type="submit" disabled={loading}>
@@ -335,7 +464,6 @@ export default function DashboardPage() {
               <th>Owner</th>
               <th>Days Waiting</th>
               <th>Stage Updated</th>
-              <th>Reference Serial</th>
               <th className="status-divider">Order Status</th>
               <th>Action</th>
             </tr>
@@ -343,7 +471,7 @@ export default function DashboardPage() {
           <tbody>
             {filteredOrders.length === 0 && (
               <tr>
-                <td colSpan="10" className="muted-cell">
+                <td colSpan="9" className="muted-cell">
                   {hasSearchFilters ? "No matching orders found." : "No orders available yet."}
                 </td>
               </tr>
@@ -352,7 +480,7 @@ export default function DashboardPage() {
               const computedOrderStatus = getOrderStatus(order);
 
               return (
-                <tr key={order.id}>
+                <tr key={order.id} className={order.isDeleted ? "dashboard-row-archived" : ""}>
                   <td>{order.salesOrderNo}</td>
                   <td>{order.customerName}</td>
                   <td>{order.division || "-"}</td>
@@ -362,14 +490,22 @@ export default function DashboardPage() {
                   <td>{toStageLabel(order.owner || order.currentOwnerRole || "") || "-"}</td>
                   <td>{order.daysWaiting ?? "-"}</td>
                   <td>{formatDateTime(order.stageUpdatedAt)}</td>
-                  <td>{order.referenceSerialNumber || "-"}</td>
                   <td className="status-divider">
                     <span className={orderStatusClass(computedOrderStatus)}>{computedOrderStatus}</span>
                   </td>
-                  <td>
+                  <td className="dashboard-action-cell">
                     <button className="action-button" type="button" onClick={() => openOrder(order)}>
                       Open
                     </button>
+                    {order.isDeleted ? (
+                      <button className="action-button" type="button" onClick={() => handleRestore(order)}>
+                        Restore
+                      </button>
+                    ) : (
+                      <button className="action-button" type="button" onClick={() => handleArchive(order)}>
+                        Archive
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

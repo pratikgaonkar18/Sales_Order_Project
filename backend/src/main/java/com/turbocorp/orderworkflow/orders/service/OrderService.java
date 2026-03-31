@@ -156,9 +156,24 @@ public class OrderService {
         return toSummary(order);
     }
 
+    @Transactional
+    public void softDelete(Long orderId, String deletedBy) {
+        SalesOrder order = salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order not found: " + orderId));
+
+        if (order.isDeleted()) {
+            return;
+        }
+
+        order.setDeleted(true);
+        order.setDeletedAt(LocalDateTime.now());
+        order.setDeletedBy(trimToNull(deletedBy));
+        salesOrderRepository.save(order);
+    }
+
     @Transactional(readOnly = true)
-    public Page<DashboardOrderResponse> getDashboard(boolean openOnly, Pageable pageable) {
-       return salesOrderRepository.findDashboardOrders(openOnly, pageable)
+    public Page<DashboardOrderResponse> getDashboard(boolean openOnly, boolean includeArchived, Pageable pageable) {
+       return salesOrderRepository.findDashboardOrders(openOnly, includeArchived, pageable)
     .map(order -> new DashboardOrderResponse(
         order.getId(),
         order.getSalesOrderNo(),
@@ -166,18 +181,21 @@ public class OrderService {
         order.getStatus(),
         order.getCurrentOwnerRole(),
         calculateDaysWaiting(order.getStageUpdatedAt()),
-        evaluateOrderStatus(order)
+        evaluateOrderStatus(order),
+        order.isDeleted()
     ));
     }
 
     @Transactional(readOnly = true)
     public List<OrderSearchResponse> searchOrders(
+            boolean includeArchived,
             String customerName,
             String partNumber,
             String salesOrderNo,
             String referenceSerial
     ) {
         return salesOrderRepository.searchOrders(
+                includeArchived,
                         trimToNull(customerName),
                         trimToNull(partNumber),
                         trimToNull(salesOrderNo),
@@ -189,22 +207,37 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderSearchResponse> searchByCustomer(String customerName) {
-        return searchOrders(customerName, null, null, null);
+        return searchOrders(false, customerName, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public List<OrderSearchResponse> searchByPartNumber(String partNumber) {
-        return searchOrders(null, partNumber, null, null);
+        return searchOrders(false, null, partNumber, null, null);
     }
 
     @Transactional(readOnly = true)
     public List<OrderSearchResponse> searchBySalesOrder(String salesOrderNo) {
-        return searchOrders(null, null, salesOrderNo, null);
+        return searchOrders(false, null, null, salesOrderNo, null);
     }
 
     @Transactional(readOnly = true)
     public List<OrderSearchResponse> searchByReferenceSerial(String referenceSerial) {
-        return searchOrders(null, null, null, referenceSerial);
+        return searchOrders(false, null, null, null, referenceSerial);
+    }
+
+    @Transactional
+    public void restore(Long orderId) {
+        SalesOrder order = salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order not found: " + orderId));
+
+        if (!order.isDeleted()) {
+            return;
+        }
+
+        order.setDeleted(false);
+        order.setDeletedAt(null);
+        order.setDeletedBy(null);
+        salesOrderRepository.save(order);
     }
 
     private long calculateDaysWaiting(LocalDateTime stageUpdatedAt) {
@@ -315,9 +348,29 @@ public class OrderService {
                 order.getStatus(),
                 order.getCurrentOwnerRole(),
                 evaluateOrderStatus(order),
-                order.getReferenceSerialNumber(),
-                order.getStageUpdatedAt()
+                resolveReferenceSerialNumber(order),
+                order.getStageUpdatedAt(),
+                order.isDeleted()
         );
+    }
+
+    private String resolveReferenceSerialNumber(SalesOrder order) {
+        String orderReference = trimToNull(order.getReferenceSerialNumber());
+        if (orderReference != null) {
+            return orderReference;
+        }
+
+        List<OrderLine> lines = order.getLines();
+        if (lines == null || lines.isEmpty()) {
+            return null;
+        }
+
+        return lines.stream()
+                .map(OrderLine::getReferenceSerialNumber)
+                .map(this::trimToNull)
+                .filter(value -> value != null)
+                .findFirst()
+                .orElse(null);
     }
 
     private ProductionOrderStatus evaluateOrderStatus(SalesOrder order) {

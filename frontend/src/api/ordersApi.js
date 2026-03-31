@@ -67,12 +67,12 @@ async function request(path, options = {}) {
   return response.json();
 }
 
-export async function fetchDashboard(openOnly = true, page = 0, size = 25) {
-  return request("/api/orders/dashboard", { method: "GET", query: { openOnly, page, size } });
+export async function fetchDashboard(openOnly = true, page = 0, size = 25, includeArchived = false) {
+  return request("/api/orders/dashboard", { method: "GET", query: { openOnly, page, size, includeArchived } });
 }
 
-export async function searchOrders(filters) {
-  return request("/api/orders/search", { method: "GET", query: filters });
+export async function searchOrders(filters, includeArchived = false) {
+  return request("/api/orders/search", { method: "GET", query: { ...(filters || {}), includeArchived } });
 }
 
 export async function createOrder(payload) {
@@ -84,6 +84,14 @@ export async function createOrder(payload) {
 
 export async function fetchOrderById(orderId) {
   return request(`/api/orders/${orderId}`, { method: "GET" });
+}
+
+export async function archiveOrder(orderId) {
+  return request(`/api/orders/${orderId}`, { method: "DELETE" });
+}
+
+export async function restoreOrder(orderId) {
+  return request(`/api/orders/${orderId}/restore`, { method: "POST" });
 }
 
 export { toStageLabel };
